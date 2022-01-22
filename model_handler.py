@@ -118,7 +118,6 @@ def batch_predict(dataset, model, path, track_progress = True):
             progress.update(1)
 
 
-
 class CheckpointCallback(tf.keras.callbacks.Callback):
     def __init__(self, directory, frequency, interval, optimize, monitor, mode, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -66,8 +66,8 @@ def parse_coco_json(input_path, output_path, image_path, labels):
             for annotation_id, annotation in annotation_dict.items():
 
                 # OPTIONAL: Parse the object as foreground or background type
-                # if labels[annotation['label']] != "Background":
-                #     labels[annotation['label']] = "Foreground"
+                if labels[annotation['label']] != "Background":
+                    labels[annotation['label']] = "Foreground"
 
                 # Format and write out the output data
                 output_data = [
