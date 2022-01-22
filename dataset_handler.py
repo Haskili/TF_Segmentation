@@ -1,3 +1,6 @@
+import json
+import os
+
 import tensorflow as tf
 
 import numpy as np
@@ -5,9 +8,6 @@ import pandas as pd
 
 import PIL
 from PIL import Image, ImageDraw, ImageFont
-
-import json
-import os
 
 
 def parse_coco_json(input_path, output_path, image_path, labels):
@@ -64,9 +64,12 @@ def parse_coco_json(input_path, output_path, image_path, labels):
 
             # Write each annotation given into the output file
             for annotation_id, annotation in annotation_dict.items():
-                if labels[annotation['label']] != "Background":
-                    labels[annotation['label']] = "Object"
 
+                # OPTIONAL: Parse the object as foreground or background type
+                # if labels[annotation['label']] != "Background":
+                #     labels[annotation['label']] = "Foreground"
+
+                # Format and write out the output data
                 output_data = [
                     f"{image_path}/{image_dict[annotation['image']]}",
                     f"{labels[annotation['label']]}",
@@ -222,7 +225,7 @@ def preprocess_datapoint(image, label, mask):
 
 
 class Augment(tf.keras.layers.Layer):
-    def __init__(self, seed = 50, rotation = 0.035, *args, **kwargs):
+    def __init__(self, seed = 533, rotation = None, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
         self.rotation = rotation

@@ -11,12 +11,12 @@ from dataset_handler import (
 )
 
 from model_handler import (
-    make_predictions,
+    predict,
     generate_callbacks,
     UNet
 )
 
-from setup_handler import (setup)
+from setup_handler import setup
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -25,13 +25,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 if __name__ == "__main__":
 
     # Define the testing session variables
-    EPOCHS = 20
-    INTERVAL = 5
+    EPOCHS = 25
+    INTERVAL = 2
     BATCH_SIZE = 64
-    BUFFER_SIZE = 1000  
+    BUFFER_SIZE = 1000
     MODEL_SIZE = 224
-    VERBOSE = True
-    DATASET = "wildfire"
+    EVALUATION_AMOUNT = 15
+    DATASET = "cells"
     DATASET_SIZE = {
         "wildfire": (480, 640),
         "cells": (416, 416)
@@ -70,19 +70,17 @@ if __name__ == "__main__":
     # Generate the dataset, and then define the
     # dataset batches as passing that dataset
     # through a data pipeline after preprocessing
-    dataset = generate_dataset("./annotations_training.csv", MODEL_SIZE)
-
-    dataset_batches = dataset.map(
+    dataset = generate_dataset("./annotations_training.csv", MODEL_SIZE).map(
         preprocess_datapoint, 
         num_parallel_calls = tf.data.AUTOTUNE
     )
 
     dataset_batches = (
-        dataset_batches
+        dataset
         .cache()
         .shuffle(BUFFER_SIZE)
         .batch(BATCH_SIZE)
-        .map(Augment(seed = 50, rotation = 0.035))
+        .map(Augment(seed = 50, rotation = 0.145))
         .prefetch(buffer_size = tf.data.AUTOTUNE)
     )
 
@@ -93,22 +91,26 @@ if __name__ == "__main__":
     )
     model.compile(optimizer = 'adam')
 
+    # Create evaluation data to test model 
+    # performance during training
+    evaluation_data = dataset_batches.take(1)
+    evaluation_data = (evaluation_data.unbatch()).take(EVALUATION_AMOUNT)
+
     # Create sample prediction(s) with the model
-    make_predictions(
-        dataset = dataset_batches, 
+    predict(
+        data = evaluation_data, 
         model = model, 
-        amount = 15,
-        path =  "./predictions/example"
+        path = "./predictions/example"
     )
 
-    # Fit the model to the data, saving the model weights 
-    # and evaluating it on training data every 'INTERVAL' epochs
+    # Fit the model to the training data 'dataset_batches', 
+    # saving the model weights and making predictions 
+    # every 'INTERVAL' epochs
     model.fit(
         dataset_batches, 
         epochs = EPOCHS,
         callbacks = generate_callbacks(
             interval = INTERVAL, 
-            data = dataset_batches, 
-            model = model
+            data = evaluation_data
         )
     )

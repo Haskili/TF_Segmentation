@@ -1,84 +1,215 @@
+import datetime
+import sys
+
 import tensorflow as tf
 from tensorflow_examples.models.pix2pix import pix2pix
 
 import numpy as np
 
-import datetime
+from tqdm import tqdm
 
 import matplotlib.pyplot as plt
 
 
-def draw_images(images, path):
-    titles = ["Input Image", "True Mask", "Predicted Mask", "Segmentation"]
+def draw_images(image, mask, prediction, segmentation, path):
 
-    # Clear and reset the figure
-    plt.close('all')
-    plt.figure()
+    # Declare the figure
+    plt.figure(figsize = (10, 10))
+
+    # Declare the components of the figure
+    fig, ((axs_A, axs_B), (axs_C, axs_D)) = plt.subplots(
+        nrows = 2, 
+        ncols = 2, 
+        sharex = True, 
+        sharey = True
+    )
 
     # For each image, plot it on the figure
-    for index in range(len(images)):
-        plt.subplot(1, len(images), index + 1)
-        plt.title(titles[index])
-        plt.imshow(tf.keras.utils.array_to_img(images[index]))
-        plt.axis('off')
+    axs_A.imshow(tf.keras.utils.array_to_img(image))
+    axs_B.imshow(tf.keras.utils.array_to_img(mask))
+    axs_C.imshow(tf.keras.utils.array_to_img(segmentation))
+    axs_D.imshow(tf.keras.utils.array_to_img(prediction))
 
-    # Save the figure
+    # Hide the tickmark labels and setup the figure layout
+    for axs in [axs_A, axs_B, axs_C, axs_D]:
+        axs.xaxis.set_ticklabels([])
+        axs.yaxis.set_ticklabels([])
+
+    fig.tight_layout(pad = 0.0)
+
+    # Save and reset the resulting figure
     plt.savefig(path)
+    plt.close('all')
 
 
-def make_predictions(dataset, model, amount, path):
-    dataset = (dataset.unbatch()).take(amount)
+def apply_segmentation(image, prediction):
+    indices = prediction[:, :, 0] != 0
+    segmentation = np.zeros(image.shape)
+    segmentation[indices] = image[indices]
+    return segmentation
 
-    # Iterate through each datapoint in 'dataset'
-    for index, (image, mask) in enumerate(dataset):
 
-        # Predict on the data 'image', and 
-        # format the resulting output
+def predict(data, model, path):
+    for index, (image, mask) in enumerate(data):
+
+        # Predict on the given input data 'image',
+        # and format the resulting output to get 
+        # the most likely classification for each pixel
         prediction = model(np.array([image]))
         prediction = tf.argmax(prediction, axis = -1)
         prediction = prediction[..., tf.newaxis][0]
 
         # Create the segmentation image from the 
-        # mask and the original input image
-        indices = prediction[:, :, 0] != 0
-        segmentation = np.zeros(image.shape)
-        segmentation[indices] = image[indices][:]
+        # predicted mask and the original input
+        segmentation = apply_segmentation(image, prediction)
 
-        # Draw the corrosponding set of images
-        draw_images([image, mask, prediction, segmentation], f"{path}_{index:03d}.png")
+        # Generate the result image, which includes the original input,
+        # true segmentation mask, predicted segmentation mask, and the 
+        # applied predicted segmentation onto the original input
+        draw_images(image, mask, segmentation, prediction, f"{path}_{index:03d}.png")
+
+
+def batch_predict(dataset, model, path, track_progress = True):
+
+    # If required, setup a progress bar
+    if track_progress:
+        progress = tqdm(
+            unit = "batches", 
+            total = tf.data.experimental.cardinality(dataset).numpy(),
+            ncols = 75
+        )
+
+    # Create a variable to track the amount of processed images
+    # (NOTE: required because batching can have remainders)
+    image_index = 0
+
+    # Iterate through each batch of data in 'dataset'
+    for image_batch, mask_batch in dataset:
+
+        # Predict on the batch of input data,
+        # and format the resulting outputs to
+        # get the most likely classification for
+        # each pixel in each prediction
+        predictions = model(image_batch)
+        predictions = tf.argmax(predictions, axis = -1)
+        predictions = predictions[..., tf.newaxis]
+
+        # Apply the predicted segmentations onto
+        # their respective original input images
+        # to get segmentation images
+        segmentations = np.array([
+            apply_segmentation(image, prediction) 
+            for image, prediction in zip(image_batch, predictions)
+        ])
+
+        # Create the batch results iterator
+        batch_results = zip(image_batch, mask_batch, predictions, segmentations)
+
+        # Generate each result image, which includes the original input,
+        # true segmentation mask, predicted segmentation mask, and the 
+        # applied predicted segmentation onto the original input
+        for image, mask, prediction, segmentation in batch_results:
+            draw_images(image, mask, prediction, segmentation, f"{path}_{image_index:03d}.png")
+            image_index += 1
+
+        # If the dataset progress bar is active, 
+        # update it for the completed batch 
+        if track_progress:
+            progress.update(1)
+
+
+
+class CheckpointCallback(tf.keras.callbacks.Callback):
+    def __init__(self, directory, frequency, interval, optimize, monitor, mode, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.directory = directory
+        self.frequency = frequency
+        self.interval = interval
+        self.optimize = optimize
+        self.monitor = monitor
+        self.mode = mode
+
+        self.optimal_value = None
+
+
+    def on_epoch_end(self, epoch, logs = None):
+        self.save_checkpoint(
+            frequency = "epoch", 
+            index = (epoch + 1), 
+            logs =  logs
+        )
+
+
+    def on_train_batch_end(self, batch, logs = None):
+        self.save_checkpoint(
+            frequency = "batch", 
+            index = (batch + 1), 
+            logs = logs
+        )
+
+
+    def save_checkpoint(self, frequency, index, logs):
+
+        # If the saving frequency isn't set to 'frequency'
+        if self.frequency != frequency:
+            return
+
+        # If the current 'index' doesn't match the saving interval
+        if (index < self.interval) or (index % self.interval):
+            return
+
+        # If the callback is set to save only the "best" results
+        if self.optimize:
+
+            # If this is the first time checking, save it as the initial result
+            if self.optimal_value == None:
+                self.optimal_value = logs[self.monitor]
+                (self.model).save_weights(f"{self.directory}/checkpoint_{index:03d}")
+
+            # Else-if the qualification of "best" is maximization of the 
+            # 'monitor' value and the current value meets that criteria
+            elif self.mode == "max" and logs[self.monitor] > self.optimal_value:
+                self.optimal_value = logs[self.monitor]
+                (self.model).save_weights(f"{self.directory}/checkpoint_{index:03d}")
+
+            # Else-if the qualification of "best" is minimization of the 
+            # 'monitor' value and the current value meets that criteria
+            elif self.mode == "min" and logs[self.monitor] < self.optimal_value:
+                self.optimal_value = logs[self.monitor]
+                (self.model).save_weights(f"{self.directory}/checkpoint_{index:03d}")
+
+        # Else we save regardless of the monitor value and saving mode
+        else:
+            (self.model).save_weights(f"{self.directory}/checkpoint_{index:03d}")
 
 
 class EvaluationCallback(tf.keras.callbacks.Callback):
-    def __init__(self, interval, data, amount, model, *args, **kwargs):
+    def __init__(self, interval, data, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.interval = interval
         self.data = data
-        self.model = model
-        self.amount = amount
 
 
     def on_epoch_end(self, epoch, logs = None):
         if ((epoch + 1) < self.interval) or ((epoch + 1) % self.interval):
             return
 
-        make_predictions(
-            dataset = self.data, 
+        predict(
+            data = self.data, 
             model = self.model, 
-            amount = self.amount,
             path = f"./predictions/training_{(epoch + 1):02d}"
         )
 
 
-def generate_callbacks(interval, data, model):
+def generate_callbacks(interval, data):
 
-    checkpoints = tf.keras.callbacks.ModelCheckpoint(
-        filepath = "./checkpoints/checkpoint-{epoch:03d}.ckpt",
-        monitor ='accuracy',
-        verbose = 1,
-        save_best_only = False,
-        save_weights_only = True, 
-        mode = 'max', 
-        save_freq = (len(data)*interval) + 1
+    checkpoints = CheckpointCallback(
+        directory = "./checkpoints",
+        frequency = "epoch", 
+        optimize = False,
+        interval = 5,
+        monitor = "accuracy",
+        mode = "max"
     )
 
     logs = tf.keras.callbacks.TensorBoard(
@@ -86,12 +217,7 @@ def generate_callbacks(interval, data, model):
         histogram_freq = 1
     )
 
-    evaluation = EvaluationCallback(
-        interval = interval,
-        data = data, 
-        model = model, 
-        amount = 25
-    )
+    evaluation = EvaluationCallback(interval = interval, data = data)
 
     return [checkpoints, logs, evaluation]
 

@@ -1,3 +1,4 @@
+ffmpeg -f image2 -framerate 9 -start_number 1 -i "sequence_%2d.png" -vf crop=400,640,0,480 test_output.gif
 <h1 align="center">Tensorflow Image Segmentation</h1> 
     <p align="center">
         An alternative implementation of Tensorflow's Image Segmentation Guide
@@ -9,9 +10,9 @@
 </p>
 
 ## Overview
-This is an alternative take on the implementation shown in Tensorflow's "[Image Segmentation](https://www.tensorflow.org/tutorials/images/segmentation)" guide. I wrote this primarily to illustrate how to perform similar techniques with custom configuration and on real (e.g. [AIFM](https://aiformankind.com) & [HPWREN](http://hpwren.ucsd.edu)'s 'Wildfire') datasets. 
+This is an alternative take on the implementation shown in Tensorflow's "[Image Segmentation](https://www.tensorflow.org/tutorials/images/segmentation)". I wrote this primarily to illustrate how to perform similar techniques with custom configuration and on real (e.g. [AIFM](https://aiformankind.com) & [HPWREN](http://hpwren.ucsd.edu)'s 'Wildfire') datasets. 
 
-Some of the things that I implemented which the tutorial doesn't go over are sub-classing the model into it's own derived `tf.Keras.Model` that can be easily have it's weights saved and loaded, applying the segmentation output as real segmentations onto the images to evaluate model performance, writing the process within the context of available online datasets in alternative formats, etc.
+Some of the things that I implemented which were not otherwise covered are sub-classing the model into it's own derived `tf.Keras.Model` that can be easily have it's weights saved and loaded, applying the segmentation output as real segmentations onto the images to evaluate model performance, writing the process within the context of available online datasets in alternative formats, etc.
 
 <br>
     <p align="center">

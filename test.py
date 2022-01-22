@@ -10,11 +10,11 @@ from dataset_handler import (
 )
 
 from model_handler import (
-    make_predictions,
+    batch_predict,
     UNet
 )
 
-from setup_handler import (setup)
+from setup_handler import setup
 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
@@ -23,12 +23,12 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 if __name__ == "__main__":
 
     # Define the training session variables
-    BATCH_SIZE = 64
-    BUFFER_SIZE = 1000  
+    BATCH_SIZE = 16
+    BUFFER_SIZE = 1000
     MODEL_SIZE = 224
-    VERBOSE = True
-    CKPT_INDEX = 20
+    CKPT_INDEX = 25
     DATASET = "wildfire"
+    SPLIT = "test"
     DATASET_SIZE = {
         "wildfire": (480, 640),
         "cells": (416, 416)
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     setup(
         dataset = DATASET, 
         url = "", 
-        rm_images = True, 
+        rm_images = False, 
         rm_checkpoints = False,
         rm_data = False
     )
@@ -57,9 +57,9 @@ if __name__ == "__main__":
 
     # Parse the testing dataset into a CSV file
     parse_coco_json(
-        input_path = f"./{DATASET}/test/_annotations.coco.json", 
+        input_path = f"./{DATASET}/{SPLIT}/_annotations.coco.json", 
         output_path = f"./annotations_testing.csv", 
-        image_path = f"./{DATASET}/test", 
+        image_path = f"./{DATASET}/{SPLIT}", 
         labels = LABELS[DATASET]
     )
 
@@ -74,14 +74,13 @@ if __name__ == "__main__":
     # Generate the dataset, and then define the
     # dataset batches as passing that dataset
     # through a data pipeline after preprocessing
-    dataset = generate_dataset("./annotations_testing.csv", MODEL_SIZE)
-
-    dataset_batches = dataset.map(
+    dataset = generate_dataset("./annotations_testing.csv", MODEL_SIZE).map(
         preprocess_datapoint, 
         num_parallel_calls = tf.data.AUTOTUNE
     )
+
     dataset_batches = (
-        dataset_batches
+        dataset
         .cache()
         .shuffle(BUFFER_SIZE)
         .batch(BATCH_SIZE)
@@ -90,9 +89,8 @@ if __name__ == "__main__":
     )
 
     # Test the model with the dataset batches
-    make_predictions(
+    batch_predict(
         dataset = dataset_batches, 
-        model = model, 
-        amount = 300,
+        model = model,
         path = "./predictions/testing"
     )
