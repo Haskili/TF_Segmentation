@@ -31,7 +31,7 @@ Requires Tensorflow (2.7.0-1) or later, please see dependencies listed [here](ht
 
 **Datasets & Formatting**
 <br></br>
-The current state of the project supports only two few different dataset formats, the first of which being COCO JSON. From the COCO JSON format, it then transforms the dataset into the other format, an example-based CSV dataset file. This CSV file is designed so that it can be easily read in as a Tensorflow `tf.data.Dataset` object by one the functions within `dataset_handler.py`.
+The current state of the project supports only two different dataset formats, the first of which being COCO JSON. From the COCO JSON format, it then transforms the dataset into the other format, an example-based CSV dataset file. This CSV format is designed so that it can be easily read in as a Tensorflow `tf.data.Dataset` object by one the functions within `dataset_handler.py`.
 
 For a few ideas on where to start looking for more of these dataset, check popular dataset repositories such as the [Roboflow Object Detection Datasets](https://public.roboflow.com/object-detection). Robowflow, like many of the more prominent sites, even allows users to download datasets in alternative formats and with occasional augmentation.
 <br></br>
