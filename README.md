@@ -15,7 +15,7 @@ A few examples of features/implementations which were not otherwise covered in t
 
 <br>
     <p align="center">
-        <img src = "https://i.imgur.com/ngeOh4Y.gif" alt ="" width="100%" height="100%">
+        <img src = "https://i.imgur.com/Q0DK7RU.gif" alt ="" width="50%" height="50%">
     </p>
 <br>
 
@@ -135,12 +135,12 @@ batch_predict(
 ## Results
 <br>
 <p align="center">
-    <img src = "https://i.imgur.com/8yW1GwZ.gif" alt ="" width="100%" height="100%">
-    <img src = "https://i.imgur.com/B68FWNE.gif" alt ="" width="100%" height="100%">
-    <img src = "https://i.imgur.com/Vfqg9PZ.gif" alt ="" width="100%" height="100%">
-    <img src = "https://i.imgur.com/v50Fwsq.gif" alt ="" width="100%" height="100%">
-    <img src = "https://i.imgur.com/O4AZdy1.gif" alt ="" width="100%" height="100%">
-    <img src = "https://i.imgur.com/ngeOh4Y.gif" alt ="" width="100%" height="100%">
+    <img src = "https://i.imgur.com/i9vxStG.gif" alt ="" width="80%" height="80%"><br></br>
+    <img src = "https://i.imgur.com/9hslh4P.gif" alt ="" width="80%" height="80%"><br></br>
+    <img src = "https://i.imgur.com/s1Neay5.gif" alt ="" width="80%" height="80%"><br></br>
+    <img src = "https://i.imgur.com/BaoJmXj.gif" alt ="" width="80%" height="80%"><br></br>
+    <img src = "https://i.imgur.com/sf6pMNd.gif" alt ="" width="80%" height="80%"><br></br>
+    <img src = "https://i.imgur.com/Q0DK7RU.gif" alt ="" width="80%" height="80%"><br></br>
 </p>
 <br></br>
 
