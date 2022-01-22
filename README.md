@@ -1,4 +1,3 @@
-ffmpeg -f image2 -framerate 9 -start_number 1 -i "sequence_%2d.png" -vf crop=400,640,0,480 test_output.gif
 <h1 align="center">Tensorflow Image Segmentation</h1> 
     <p align="center">
         An alternative implementation of Tensorflow's Image Segmentation Guide
@@ -10,9 +9,9 @@ ffmpeg -f image2 -framerate 9 -start_number 1 -i "sequence_%2d.png" -vf crop=400
 </p>
 
 ## Overview
-This is an alternative take on the implementation shown in Tensorflow's "[Image Segmentation](https://www.tensorflow.org/tutorials/images/segmentation)". I wrote this primarily to illustrate how to perform similar techniques with custom configuration and on real (e.g. [AIFM](https://aiformankind.com) & [HPWREN](http://hpwren.ucsd.edu)'s 'Wildfire') datasets. 
+This is an alternative take on the implementation shown in Tensorflow's "[Image Segmentation](https://www.tensorflow.org/tutorials/images/segmentation)" guide. I wrote this primarily to illustrate how to perform similar techniques that lean more on the features within Tensorflow on real (e.g. [AIFM](https://aiformankind.com) & [HPWREN](http://hpwren.ucsd.edu)'s 'Wildfire') datasets. 
 
-Some of the things that I implemented which were not otherwise covered are sub-classing the model into it's own derived `tf.Keras.Model` that can be easily have it's weights saved and loaded, applying the segmentation output as real segmentations onto the images to evaluate model performance, writing the process within the context of available online datasets in alternative formats, etc.
+A few examples of features/implementations which were not otherwise covered in the original are sub-classing the model into it's own derived `tf.Keras.Model` class that can easily have it's weights saved and loaded into a new model, applying the segmentation output onto the images to better evaluate model performance, writing the process within the context of available popular online datasets and their respective formats, etc.
 
 <br>
     <p align="center">
@@ -20,21 +19,21 @@ Some of the things that I implemented which were not otherwise covered are sub-c
     </p>
 <br>
 
-While the current implementation remains limited given the initial use-case it was designed for, the current plan is to get more appropriate datasets to better demonstrate the project's utility.
+While the current implementation remains limited given the initial use-case it was designed for, the current plan is to get more appropriate datasets to better demonstrate the utility and go from there.
 <br></br>
 
 ## Requirements
 
-**Tensorflow (2.7.0-1)**
+**Libraries -- Tensorflow (2.7.0-1)**
 <br></br>
 Requires Tensorflow (2.7.0-1) or later, please see dependencies listed [here](https://archlinux.org/packages/community/x86_64/tensorflow/).
 <br></br>
 
 **Datasets & Formatting**
 <br></br>
-The current state of the project supports only two few different data formats, the first an formost of which is COCO JSON. From the COCO JSON format, it can then transform the data into the other format, example-based CSV dataset file that can then be easily read in as a Tensorflow `tf.data.Dataset` object.
+The current state of the project supports only two few different dataset formats, the first of which being COCO JSON. From the COCO JSON format, it then transforms the dataset into the other format, an example-based CSV dataset file. This CSV file is designed so that it can be easily read in as a Tensorflow `tf.data.Dataset` object by one the functions within `dataset_handler.py`.
 
-For a few ideas on where to start, check popular data repositories such as the [Roboflow Object Detection Datasets](https://public.roboflow.com/object-detection) and others like it. Robowflow, like many of the more prominent sites, even allows for choosing alternative dataset formats and dataset augmentation.
+For a few ideas on where to start looking for more of these dataset, check popular dataset repositories such as the [Roboflow Object Detection Datasets](https://public.roboflow.com/object-detection). Robowflow, like many of the more prominent sites, even allows users to download datasets in alternative formats and with occasional augmentation.
 <br></br>
 
 ## Dataset Loading & Generation
@@ -91,10 +90,9 @@ model.compile(optimizer = 'adam')
 
 Once that's done, the next (optional) step is to make a few example predictions to make sure everything is loaded in correctly and is functioning as expected.
 ```python
-make_predictions(
+batch_predict(
     dataset = dataset_batches, 
     model = model, 
-    amount = 15, 
     path =  "./predictions/example"
 )
 ```
@@ -106,8 +104,7 @@ model.fit(
     epochs = EPOCHS,
     callbacks = generate_callbacks(
         interval = INTERVAL, 
-        data = dataset_batches, 
-        model = model
+        data = dataset_batches
     )
 )
 ```
@@ -127,10 +124,9 @@ model.load_weights(f"./checkpoints/checkpoint-{CKPT_INDEX}.ckpt").expect_partial
 
 After that, the last step is to call `make_predictions()` to pass all the data to the model and parse the resulting output as needed.
 ```python
-make_predictions(
+batch_predict(
     dataset = dataset_batches, 
-    model = model, 
-    amount = 100,
+    model = model,
     path = "./predictions/testing"
 )
 ```
