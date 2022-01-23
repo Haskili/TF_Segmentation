@@ -69,14 +69,19 @@ def predict(data, model, path):
         draw_images(image, mask, segmentation, prediction, f"{path}_{index:03d}.png")
 
 
-def batch_predict(dataset, model, path, track_progress = True):
+def batch_predict(dataset, model, path, verbose = True):
 
     # If required, setup a progress bar
-    if track_progress:
+    if verbose:
+        l_bar = "{percentage:3.0f}%"
+        m_bar = "{bar:20}"
+        r_bar = "({n_fmt}/{total_fmt}) [{elapsed_s:01.0f}s < {remaining_s:01.0f}s] {rate_fmt}{postfix}"
+
         progress = tqdm(
-            unit = "batches", 
+            bar_format = f"{l_bar} |{m_bar}| {r_bar}",
+            unit = "batch", 
             total = tf.data.experimental.cardinality(dataset).numpy(),
-            ncols = 75
+            ncols = 90
         )
 
     # Create a variable to track the amount of processed images
@@ -114,72 +119,102 @@ def batch_predict(dataset, model, path, track_progress = True):
 
         # If the dataset progress bar is active, 
         # update it for the completed batch 
-        if track_progress:
+        if verbose:
             progress.update(1)
 
 
 class CheckpointCallback(tf.keras.callbacks.Callback):
-    def __init__(self, directory, frequency, interval, optimize, monitor, mode, *args, **kwargs):
+    def __init__(self, directory, frequency, interval, optimize, verbose, metric, mode, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.directory = directory
         self.frequency = frequency
         self.interval = interval
         self.optimize = optimize
-        self.monitor = monitor
+        self.verbose = verbose
+        self.metric = metric
         self.mode = mode
 
         self.optimal_value = None
+        self.progress = None
+
+
+    def on_epoch_begin(self, epoch, logs = None):
+        print(f"\nEpoch [{epoch + 1}/{self.params['epochs']}]", flush = True)
+
+        if self.verbose:
+            l_bar = "{percentage:3.0f}%"
+            m_bar = "{bar:20}"
+            r_bar = "({n_fmt}/{total_fmt}) [{elapsed_s:01.0f}s < {remaining_s:01.0f}s] {rate_fmt}{postfix}"
+
+            self.progress = tqdm(
+                bar_format = f"{l_bar} |{m_bar}| {r_bar}",
+                unit = "steps", 
+                total = self.params['steps'],
+                ncols = 90
+            )
 
 
     def on_epoch_end(self, epoch, logs = None):
-        self.save_checkpoint(
-            frequency = "epoch", 
-            index = (epoch + 1), 
-            logs =  logs
-        )
+
+        # Close the progress bar
+        if self.verbose:
+            self.progress.close()
+
+        # Check for the checkpoint saving criteria being met
+        if self.check_criteria("epoch", (epoch + 1), logs):
+            (self.model).save_weights(f"{self.directory}/checkpoint-{(epoch + 1):03d}.ckpt")
+            print(f"\nSaving checkpoint to '{self.directory}'...\n", flush = True)
 
 
     def on_train_batch_end(self, batch, logs = None):
-        self.save_checkpoint(
-            frequency = "batch", 
-            index = (batch + 1), 
-            logs = logs
-        )
+        
+        # Update the progress bar and it's displayed metrics
+        if self.verbose:
+            (self.progress).update(1)
+            (self.progress).set_postfix(
+                loss = f"{logs['loss']:.03f}", 
+                accuracy = f"{logs['accuracy']:.03f}"
+            )
+
+        # Check for the checkpoint saving criteria being met
+        if self.check_criteria("batch", (batch + 1), logs):
+            (self.model).save_weights(f"{self.directory}/checkpoint-{(batch + 1):03d}.ckpt")
+            print(f"\nSaving checkpoint to '{self.directory}'...\n", flush = True)
 
 
-    def save_checkpoint(self, frequency, index, logs):
+    def check_criteria(self, frequency, index, logs):
 
-        # If the saving frequency isn't set to 'frequency'
+        # If the saving frequency isn't set to the given 'frequency'
         if self.frequency != frequency:
-            return
+            return False
 
         # If the current 'index' doesn't match the saving interval
         if (index < self.interval) or (index % self.interval):
-            return
+            return False
 
         # If the callback is set to save only the "best" results
         if self.optimize:
 
             # If this is the first time checking, save it as the initial result
             if self.optimal_value == None:
-                self.optimal_value = logs[self.monitor]
-                (self.model).save_weights(f"{self.directory}/checkpoint_{index:03d}")
+                self.optimal_value = logs[self.metric]
+                return True
 
             # Else-if the qualification of "best" is maximization of the 
             # 'monitor' value and the current value meets that criteria
-            elif self.mode == "max" and logs[self.monitor] > self.optimal_value:
-                self.optimal_value = logs[self.monitor]
-                (self.model).save_weights(f"{self.directory}/checkpoint_{index:03d}")
+            elif self.mode == "max" and logs[self.metric] > self.optimal_value:
+                self.optimal_value = logs[self.metric]
+                return True
 
             # Else-if the qualification of "best" is minimization of the 
             # 'monitor' value and the current value meets that criteria
-            elif self.mode == "min" and logs[self.monitor] < self.optimal_value:
-                self.optimal_value = logs[self.monitor]
-                (self.model).save_weights(f"{self.directory}/checkpoint_{index:03d}")
+            elif self.mode == "min" and logs[self.metric] < self.optimal_value:
+                self.optimal_value = logs[self.metric]
+                return True
 
         # Else we save regardless of the monitor value and saving mode
         else:
-            (self.model).save_weights(f"{self.directory}/checkpoint_{index:03d}")
+            return True
 
 
 class EvaluationCallback(tf.keras.callbacks.Callback):
@@ -202,20 +237,33 @@ class EvaluationCallback(tf.keras.callbacks.Callback):
 
 def generate_callbacks(interval, data):
 
+    # Get a callback to save checkpoints while 
+    # training the model to a given directory
+    #
+    # NOTE: Setting the steps-per-execution in compile()
+    #       may break this when using verbose output, 
+    #       and can be fixed by instead setting this 
+    #       as a tf.keras.Callbacks.ModelCheckpoint
+    #
     checkpoints = CheckpointCallback(
         directory = "./checkpoints",
         frequency = "epoch", 
         optimize = False,
+        verbose = True,
         interval = 5,
         monitor = "accuracy",
         mode = "max"
     )
 
+    # Get a callback to save the history for
+    # viewing within TensorBoard
     logs = tf.keras.callbacks.TensorBoard(
         log_dir = f"logs/fit/{datetime.datetime.now().strftime('%Y_%m_%d-%H_%M_%S')}",
         histogram_freq = 1
     )
 
+    # Get a callback for evaluating the model
+    # on a dataset 'data' every 'interval' epochs
     evaluation = EvaluationCallback(interval = interval, data = data)
 
     return [checkpoints, logs, evaluation]

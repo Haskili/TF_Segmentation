@@ -27,7 +27,7 @@ if __name__ == "__main__":
     BUFFER_SIZE = 1000
     MODEL_SIZE = 224
     CKPT_INDEX = 25
-    DATASET = "wildfire"
+    DATASET = "cells"
     SPLIT = "test"
     DATASET_SIZE = {
         "wildfire": (480, 640),

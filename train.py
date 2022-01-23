@@ -26,7 +26,7 @@ if __name__ == "__main__":
 
     # Define the testing session variables
     EPOCHS = 25
-    INTERVAL = 2
+    INTERVAL = 5
     BATCH_SIZE = 64
     BUFFER_SIZE = 1000
     MODEL_SIZE = 224
