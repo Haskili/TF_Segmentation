@@ -23,11 +23,11 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 if __name__ == "__main__":
 
     # Define the training session variables
-    BATCH_SIZE = 16
+    BATCH_SIZE = 64
     BUFFER_SIZE = 1000
     MODEL_SIZE = 224
-    CKPT_INDEX = 25
-    DATASET = "cells"
+    CKPT_INDEX = 30
+    DATASET = "wildfire"
     SPLIT = "test"
     DATASET_SIZE = {
         "wildfire": (480, 640),
@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
     # Test the model with the dataset batches
     batch_predict(
-        dataset = dataset_batches, 
+        data = dataset_batches, 
         model = model,
         path = "./predictions/testing"
     )

@@ -25,13 +25,13 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 if __name__ == "__main__":
 
     # Define the testing session variables
-    EPOCHS = 25
+    EPOCHS = 30
     INTERVAL = 5
     BATCH_SIZE = 64
     BUFFER_SIZE = 1000
     MODEL_SIZE = 224
     EVALUATION_AMOUNT = 15
-    DATASET = "cells"
+    DATASET = "wildfire"
     DATASET_SIZE = {
         "wildfire": (480, 640),
         "cells": (416, 416)
@@ -80,7 +80,7 @@ if __name__ == "__main__":
         .cache()
         .shuffle(BUFFER_SIZE)
         .batch(BATCH_SIZE)
-        .map(Augment(seed = 50, rotation = 0.145))
+        .map(Augment(seed = 100, rotation = 0.150))
         .prefetch(buffer_size = tf.data.AUTOTUNE)
     )
 
@@ -109,6 +109,7 @@ if __name__ == "__main__":
     model.fit(
         dataset_batches, 
         epochs = EPOCHS,
+        verbose = 0,
         callbacks = generate_callbacks(
             interval = INTERVAL, 
             data = evaluation_data

@@ -10,7 +10,7 @@ import PIL
 from PIL import Image, ImageDraw, ImageFont
 
 
-def parse_coco_json(input_path, output_path, image_path, labels):
+def parse_coco_json(input_path: str, output_path: str, image_path: str, labels: list):
     """
     Read a COCO JSON formatted annotations file corrosponding to a set
     of images, and create a CSV file of that data in an alternate format, 
@@ -92,7 +92,7 @@ def generate_mask(boxes: list, original_size: tuple, model_size: int):
             model_size (int): Input size of images for the model
 
     Returns:
-            mask (numpy) (shape = (model_size, model_size, 1))
+            mask (np.array) (shape = (model_size, model_size, 1))
 
     Raises:
             N/A
@@ -212,6 +212,21 @@ def generate_dataset(input_path: str, model_size: int):
 
 
 def normalize(input_image, input_mask, sub_operation = False):
+    """
+    Normalize an input image and mask pair
+
+    Arguments:
+            input_image (np.array): Input image to normalize
+            input_mask (np.array): Input mask to normalize
+            sub_operation (bool): Flag to toggle subtraction operation
+
+    Returns:
+            Normalized image and mask (np.array, np.array)
+
+    Raises:
+            N/A
+    """
+
     input_image = tf.cast(input_image, tf.float32) / 255.0
     if sub_operation:
         input_mask -= 1.0
@@ -220,6 +235,22 @@ def normalize(input_image, input_mask, sub_operation = False):
 
 
 def preprocess_datapoint(image, label, mask):
+    """
+    Preprocess a datapoint with many possible 
+    sequential alterations/functions
+
+    Arguments:
+            image (None): Input image to process
+            label (None): Label associated with the image
+            mask (None): Mask associated with the image
+
+    Returns:
+            N/A
+
+    Raises:
+            N/A
+    """
+
     input_image, input_mask = normalize(image, mask)
     return input_image, input_mask
 

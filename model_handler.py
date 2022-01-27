@@ -12,6 +12,23 @@ import matplotlib.pyplot as plt
 
 
 def draw_images(image, mask, prediction, segmentation, path):
+    """
+    Draw the set of resulting prediction data onto a single image
+    and save it to a specified file path
+
+    Arguments:
+            image (np.array): The original input image
+            mask (np.array): The mask for the image
+            prediction (np.array): The predicted segmentation of the image
+            segmentation (np.array): The applied segmentation prediction image
+            path (str): A full path to the desired output file including file name 
+
+    Returns:
+            N/A
+
+    Raises:
+            N/A
+    """
 
     # Declare the figure
     plt.figure(figsize = (10, 10))
@@ -43,6 +60,21 @@ def draw_images(image, mask, prediction, segmentation, path):
 
 
 def apply_segmentation(image, prediction):
+    """
+    Apply the segmentation 'prediction' to 'image'
+    with an AND operation between the two
+
+    Arguments:
+            image (np.array): The original input image
+            prediction (np.array): The predicted segmentation of the image
+
+    Returns:
+            A copy of the original image with the segmentation applied to it
+
+    Raises:
+            N/A
+    """
+
     indices = prediction[:, :, 0] != 0
     segmentation = np.zeros(image.shape)
     segmentation[indices] = image[indices]
@@ -50,6 +82,28 @@ def apply_segmentation(image, prediction):
 
 
 def predict(data, model, path):
+    """
+    Predict on a flat array of images 'data' using the
+    trained network 'model' and save the resulting output 
+    to a specified 'path'
+
+    This is typically reserved for smaller datasets to test
+    on that do not require batching or any other special
+    processing techniques applied to them
+
+    Arguments:
+            data (iterable): An iterable structure of datapoints
+            model (tf.Keras.model): Model to infer on the data with
+            path (str): Desired output directory path
+
+    Returns:
+            N/A
+
+    Raises:
+            N/A
+    """
+
+    # Iterate through each datapoint in 'data'
     for index, (image, mask) in enumerate(data):
 
         # Predict on the given input data 'image',
@@ -69,7 +123,27 @@ def predict(data, model, path):
         draw_images(image, mask, segmentation, prediction, f"{path}_{index:03d}.png")
 
 
-def batch_predict(dataset, model, path, verbose = True):
+def batch_predict(data, model, path, verbose = True):
+    """
+    Predict on a batched set of images 'data' using the
+    trained network 'model' and save the resulting output 
+    to a specified 'path'
+
+    This is typically used for larger datasets that require
+    batching and use other special techniques for processing
+
+    Arguments:
+            data (tf.data.Dataset): Batched data containing images and masks
+            model (tf.Keras.model): Model to infer on the data with
+            path (str): Desired output directory path
+            verbose (bool): Flag to toggle progress bar
+
+    Returns:
+            N/A
+
+    Raises:
+            N/A
+    """
 
     # If required, setup a progress bar
     if verbose:
@@ -80,7 +154,7 @@ def batch_predict(dataset, model, path, verbose = True):
         progress = tqdm(
             bar_format = f"{l_bar} |{m_bar}| {r_bar}",
             unit = "batch", 
-            total = tf.data.experimental.cardinality(dataset).numpy(),
+            total = tf.data.experimental.cardinality(data).numpy(),
             ncols = 90
         )
 
@@ -88,8 +162,8 @@ def batch_predict(dataset, model, path, verbose = True):
     # (NOTE: required because batching can have remainders)
     image_index = 0
 
-    # Iterate through each batch of data in 'dataset'
-    for image_batch, mask_batch in dataset:
+    # Iterate through each batch of images and masks in 'data'
+    for image_batch, mask_batch in data:
 
         # Predict on the batch of input data,
         # and format the resulting outputs to
@@ -236,6 +310,25 @@ class EvaluationCallback(tf.keras.callbacks.Callback):
 
 
 def generate_callbacks(interval, data):
+    """
+    Generate three seperate callbacks useful for fitting a model:
+
+    - Model Checkpoint callback for saving model weights and monitoring
+    - Tensorboard Logging callback for history checking & model comparison
+    - Evaluation callback for manual mid-training evaluation of model performance
+
+    Arguments:
+            interval (int): The amount of iterations to wait before evaluating the
+                            model and saving it's current set weights to a directory
+
+            data (tf.data.Dataset): Dataset used to evaluate the model while training
+
+    Returns:
+            A single list containing each callback
+
+    Raises:
+            N/A
+    """
 
     # Get a callback to save checkpoints while 
     # training the model to a given directory
@@ -250,8 +343,8 @@ def generate_callbacks(interval, data):
         frequency = "epoch", 
         optimize = False,
         verbose = True,
-        interval = 5,
-        monitor = "accuracy",
+        interval = interval,
+        metric = "accuracy",
         mode = "max"
     )
 
