@@ -67,7 +67,6 @@ if __name__ == "__main__":
     # and save each one as a seperate file for later usage
     generate_dataset_masks(
         input_file = "./annotations_testing.csv", 
-        image_shape = DATASET_SIZE[DATASET],
         model_size = MODEL_SIZE
     )
 
