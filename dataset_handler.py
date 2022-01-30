@@ -81,14 +81,14 @@ def parse_coco_json(input_path: str, output_path: str, image_path: str, labels: 
                 output_file.write(f"{','.join([str(data) for data in output_data])}\n")
 
 
-def generate_mask(boxes: list, original_size: tuple, model_size: int):
+def generate_mask(image_path: str, boxes: list, model_size: int):
     """
     Generate and return a mask image given a list containing a
     bounding box for every object within the image.
 
     Arguments:
+            image_path (str): Path to the original image
             boxes (list): List containing each object's bounding box
-            original_size (tuple): Original size of image being masked
             model_size (int): Input size of images for the model
 
     Returns:
@@ -98,9 +98,13 @@ def generate_mask(boxes: list, original_size: tuple, model_size: int):
             N/A
     """
 
+    # Load the original image and find it's size
+    image = np.array(Image.open(image_path))
+    original_size = (image.shape[0], image.shape[1])
+
     # Initialize an empty mask image
     mask = Image.fromarray(np.zeros(original_size))
-    drawing = ImageDraw.Draw(mask)    
+    drawing = ImageDraw.Draw(mask)
 
     # Draw each bounding box onto the mask image
     for box in boxes:
@@ -125,14 +129,13 @@ def generate_mask(boxes: list, original_size: tuple, model_size: int):
     return mask.reshape((model_size, model_size, 1))
 
 
-def generate_dataset_masks(input_file: str, image_shape: tuple, model_size: int):
+def generate_dataset_masks(input_file: str, model_size: int):
     """
     Generate and save a mask image for every single image inside
     the given dataset file 'input_file'.
 
     Arguments:
             input_file (str): Path to the CSV dataset file
-            image_shape (tuple): Original size of image being masked
             model_size (int): Input size of images of the model
 
     Returns:
@@ -161,7 +164,7 @@ def generate_dataset_masks(input_file: str, image_shape: tuple, model_size: int)
     # For each image, generate the a mask image including each
     # object within the image and save the final result
     for image_path in images.keys():
-        mask = generate_mask(images[image_path], image_shape, model_size)
+        mask = generate_mask(image_path, images[image_path], model_size)
         np.save(f"./masks/{image_path.split('/')[-1]}", mask)
 
 
